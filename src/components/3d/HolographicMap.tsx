@@ -1,324 +1,341 @@
-import { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Text, Html } from '@react-three/drei';
+import { Html, Text, Float, Instance, Instances } from '@react-three/drei';
 import * as THREE from 'three';
 
-interface MapBuilding {
-  id: string;
-  name: string;
-  hindiName: string;
-  position: [number, number];
-  size: [number, number];
-  height: number;
-  icon?: string;
-  section?: string;
+// --- Types ---
+interface BuildingData {
+    id: string;
+    name: string;
+    hindiName: string;
+    // Position: [x, z], Size: [width, length], Height
+    position: [number, number];
+    size: [number, number];
+    height: number;
+    type?: 'complex' | 'simple' | 'landmark';
+    icon?: string;
+    color?: string;
 }
 
-// Campus buildings based on the reference map layout
-const CAMPUS_BUILDINGS: MapBuilding[] = [
-  { id: 'main-gate', name: 'MITS Main Gate', hindiName: 'एमआईटीएस मेन गेट', position: [0, 12], size: [4, 2], height: 0.8, icon: '🎓' },
-  { id: 'idbi-atm', name: 'IDBI Bank ATM', hindiName: 'आई.डी.बी.आई. बैंक ए.टी.एम', position: [8, 14], size: [2, 2], height: 0.5, icon: '🏧' },
-  { id: 'biotech', name: 'Dept of Biotechnology', hindiName: 'जैव प्रौद्योगिकी विभाग', position: [10, 6], size: [5, 4], height: 1.2 },
-  { id: 'medical', name: 'MITS Medical Dispensary', hindiName: 'एमआईटीएस मेडिकल डिस्पेंसरी', position: [14, 4], size: [4, 3], height: 1, icon: 'H' },
-  { id: 'civil-dept', name: 'Department of Civil Engineering', hindiName: 'सिविल इंजीनियरिंग विभाग', position: [2, 0], size: [8, 6], height: 1.5 },
-  { id: 'golden-garden', name: 'Golden Jubilee Garden MITS', hindiName: 'गोल्डन जुबिली गार्डन एमआईटीएस', position: [8, -4], size: [6, 4], height: 0.3, icon: '🌳' },
-  { id: 'library', name: 'MITS Library', hindiName: 'एमआईटीएस लाइबरी', position: [-8, -2], size: [5, 4], height: 1.3, icon: '📚' },
-  { id: 'canteen', name: 'MITS Canteen', hindiName: 'एमआईटीएस कैंटीन', position: [-6, 2], size: [4, 3], height: 0.8, icon: '🍽️' },
-  { id: 'shivji-mandir', name: 'Shivji Mandir', hindiName: 'शिवजी मंदिर', position: [-10, 4], size: [3, 3], height: 1, icon: 'ॐ' },
-  { id: 'union-bank', name: 'Union Bank of India', hindiName: 'यूनियन बैंक ऑफ इंडिया', position: [-14, 6], size: [3, 2], height: 0.6, icon: '🏦' },
-  { id: 'architecture', name: 'Department of Architecture', hindiName: 'वास्तुकला विभाग', position: [0, -10], size: [7, 5], height: 1.4 },
-  { id: 'diamond-gate', name: 'Diamond Jubilee Gate, MITS', hindiName: 'डायमंड जुबिली गेट, एमआईटीएस', position: [4, -16], size: [4, 2], height: 0.8, icon: '💎' },
-  { id: 'mits-main', name: 'Madhav Institute of Technology & Science', hindiName: 'माधव इंस्टिट्यूट ऑफ टेक्नोलॉजी एंड साइंस', position: [14, -10], size: [6, 4], height: 1.6, icon: '🏛️' },
+// --- Configuration ---
+const THEME = {
+    primary: '#00f3ff',     // Bright Cyan
+    secondary: '#006d77',   // Deep Teal
+    ground: '#04181b',      // Very Dark Teal/Black
+    glow: '#00ffff',
+    glassOpacity: 0.15,
+    edgeOpacity: 0.8
+};
+
+// --- Data: Mapped to the Diamond Layout ---
+// The map is rotated 45deg. 
+const BUILDINGS: BuildingData[] = [
+    // Top Corner
+    { id: 'main-gate', name: 'MITS Main Gate', hindiName: 'मुख्य द्वार', position: [5, -25], size: [4, 2], height: 2, type: 'landmark', icon: '🎓' },
+
+    // Left Wing (Civil/Canteen area)
+    { id: 'old building', name: 'Old Building', hindiName: 'सिविल विभाग', position: [-6,-10], size: [16, 7], height: 2.5, type: 'complex' },
+    { id: 'canteen', name: 'Canteen', hindiName: 'कैंटीन', position: [-15, -12], size: [4, 4], height: 1.5, type: 'simple', icon: '🍽️' },
+    { id: 'AI department', name: 'AI department', hindiName: 'कैंटीन', position: [-3, 4], size: [9, 5], height: 6, type: 'simple', icon: '🍽️' },
+    { id: 'library', name: 'Central Library', hindiName: 'पुस्तकालय', position: [-7,-16], size: [4, 3], height: 3, type: 'complex', icon: '📚' },
+
+    // Center
+    { id: 'golden-garden', name: 'stage ground', hindiName: 'गोल्डन जुबिली गार्डन', position: [-5, -22], size: [15, 6], height: 0.2, type: 'landmark', color: '#00ffaa' },
+    { id: 'golden-garden', name: 'AI ground', hindiName: 'गोल्डन जुबिली गार्डन', position: [-3, -2], size: [9, 7], height: 0.2, type: 'landmark', color: '#00ffaa' },
+    { id: 'golden-garden', name: 'statue ground', hindiName: 'गोल्डन जुबिली गार्डन', position: [15, -18.5], size: [10, 10], height: 0.2, type: 'landmark', color: '#00ffaa' },
+    { id: 'golden-garden', name: 'football ground', hindiName: 'गोल्डन जुबिली गार्डन', position: [-5, 22], size: [30, 15], height: 0.2, type: 'landmark', color: '#00ffaa' },
+
+    // Right Wing (Biotech/Medical)
+    { id: 'biotech', name: 'Biotech Dept', hindiName: 'जैव प्रौद्योगिकी', position: [15,-11], size: [5, 5], height: 2.5, type: 'simple' },
+    { id: 'dispensary', name: 'Dispensary', hindiName: 'औषधालय', position: [15, -4] , size: [4, 4], height: 1.5, type: 'simple', icon: 'H' },
+
+    // Bottom Section (Architecture/Main Block)
+    { id: 'architecture', name: 'Architecture Dept', hindiName: 'वास्तुकला', position: [-10, -3], size: [4, 4], height: 2.8, type: 'complex' },
+    { id: 'architecture', name: 'Mechanical Dept', hindiName: 'वास्तुकला', position: [0, -5.5], size: [4, 4], height: 2.8, type: 'complex' },
+    { id: 'golden-garden', name: 'statue', hindiName: 'वास्तुकला', position: [15, -18.5], size: [2, 2], height: 1.5, type: 'simple' },
+    { id: 'golden-garden', name: 'statue', hindiName: 'वास्तुकला', position: [15, -18.5], size: [1, 1], height: 3, type: 'simple' },
+    { id: 'mits-main', name: 'mechanical workshop', hindiName: 'मुख्य भवन', position: [0, 15], size: [7, 5], height: 3.5, type: 'complex', icon: '🏛️' },
+
+    // Bottom Corner
+    { id: 'diamond-gate', name: 'Diamond Jubilee Gate', hindiName: 'डायमंड गेट', position: [-20, 16], size: [4, 1], height: 2, type: 'landmark' },
 ];
 
-// Road paths connecting buildings
-const ROADS: Array<{ start: [number, number]; end: [number, number]; width: number }> = [
-  // Main horizontal roads
-  { start: [-20, 12], end: [20, 12], width: 0.4 },
-  { start: [-20, 6], end: [20, 6], width: 0.3 },
-  { start: [-20, 0], end: [20, 0], width: 0.4 },
-  { start: [-20, -6], end: [20, -6], width: 0.3 },
-  { start: [-20, -12], end: [20, -12], width: 0.4 },
-  { start: [-20, -18], end: [20, -18], width: 0.4 },
-  // Main vertical roads
-  { start: [-16, -20], end: [-16, 16], width: 0.4 },
-  { start: [-8, -20], end: [-8, 16], width: 0.3 },
-  { start: [0, -20], end: [0, 16], width: 0.4 },
-  { start: [8, -20], end: [8, 16], width: 0.3 },
-  { start: [16, -20], end: [16, 16], width: 0.4 },
-  // Diagonal connector
-  { start: [-16, 16], end: [16, 16], width: 0.5 },
+const ROADS = [
+    // The Square/Diamond Perimeter
+    { points: [[-16, -20], [16, -20], [16, 20], [-16, 20], [-16, -20]] }, // Outer Loop
+    { points: [[-18, -18], [18, 18]] }, // Diagonal Cross (Sun City to Gate)
+    { points: [[-5, -5], [5, -5], [5, 5], [-5, 5], [-5, -5]] }, // Inner Garden Loop
 ];
 
-interface HolographicMapProps {
-  onBuildingHover: (building: string | null) => void;
-  onBuildingClick: (building: string) => void;
-}
+// --- Components ---
 
-function MapBuilding({ 
-  building, 
-  onHover, 
-  onClick 
-}: { 
-  building: MapBuilding; 
-  onHover: (id: string | null) => void;
-  onClick: (id: string) => void;
-}) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const [hovered, setHovered] = useState(false);
-  
-  useFrame((state) => {
-    if (meshRef.current) {
-      const time = state.clock.getElapsedTime();
-      // Subtle floating animation
-      meshRef.current.position.y = building.height / 2 + 0.1 + Math.sin(time * 1.5 + building.position[0]) * 0.05;
-      
-      if (hovered) {
-        meshRef.current.position.y += 0.2;
-      }
-    }
-  });
-
-  return (
-    <group position={[building.position[0], 0, building.position[1]]}>
-      {/* Building base glow */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-        <planeGeometry args={[building.size[0] + 0.5, building.size[1] + 0.5]} />
-        <meshBasicMaterial 
-          color="#00f3ff"
-          transparent
-          opacity={hovered ? 0.4 : 0.15}
-        />
-      </mesh>
-      
-      {/* Building mesh */}
-      <mesh
-        ref={meshRef}
-        onPointerOver={(e) => {
-          e.stopPropagation();
-          setHovered(true);
-          onHover(building.id);
-          document.body.style.cursor = 'pointer';
-        }}
-        onPointerOut={(e) => {
-          e.stopPropagation();
-          setHovered(false);
-          onHover(null);
-          document.body.style.cursor = 'default';
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick(building.id);
-        }}
-      >
-        <boxGeometry args={[building.size[0], building.height, building.size[1]]} />
-        <meshStandardMaterial
-          color={hovered ? "#00ccff" : "#0d4f5a"}
-          transparent
-          opacity={0.9}
-          emissive="#00f3ff"
-          emissiveIntensity={hovered ? 0.5 : 0.2}
-          metalness={0.6}
-          roughness={0.3}
-        />
-      </mesh>
-      
-      {/* Building top highlight */}
-      <mesh position={[0, building.height + 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[building.size[0] - 0.1, building.size[1] - 0.1]} />
-        <meshBasicMaterial 
-          color="#00ffff"
-          transparent
-          opacity={0.3}
-        />
-      </mesh>
-      
-      {/* Wireframe outline */}
-      <lineSegments position={[0, building.height / 2, 0]}>
-        <edgesGeometry args={[new THREE.BoxGeometry(building.size[0], building.height, building.size[1])]} />
-        <lineBasicMaterial color="#00f3ff" transparent opacity={hovered ? 1 : 0.6} />
-      </lineSegments>
-      
-      {/* Floating label */}
-      <Html
-        position={[0, building.height + 1.5, 0]}
-        center
-        distanceFactor={8}
-        style={{
-          transition: 'all 0.2s',
-          opacity: hovered ? 1 : 0.9,
-          transform: `scale(${hovered ? 1.1 : 1})`,
-          pointerEvents: 'none',
-        }}
-      >
-        <div 
-          className="px-2 py-1 rounded text-center whitespace-nowrap"
-          style={{
-            background: 'rgba(0, 30, 40, 0.9)',
-            border: '1px solid #00f3ff',
-            boxShadow: '0 0 15px rgba(0, 243, 255, 0.3)',
-          }}
-        >
-          {building.icon && (
-            <span className="mr-1">{building.icon}</span>
-          )}
-          <span className="font-orbitron text-xs font-bold text-primary">
-            {building.name}
-          </span>
-          <div className="font-rajdhani text-[10px] text-muted-foreground">
-            {building.hindiName}
-          </div>
-        </div>
-      </Html>
-    </group>
-  );
-}
-
-function NeonRoad({ start, end, width }: { start: [number, number]; end: [number, number]; width: number }) {
-  const length = Math.sqrt(Math.pow(end[0] - start[0], 2) + Math.pow(end[1] - start[1], 2));
-  const angle = Math.atan2(end[1] - start[1], end[0] - start[0]);
-  const midX = (start[0] + end[0]) / 2;
-  const midZ = (start[1] + end[1]) / 2;
-  
-  return (
-    <mesh 
-      position={[midX, 0.05, midZ]} 
-      rotation={[0, -angle + Math.PI / 2, 0]}
-    >
-      <planeGeometry args={[width, length]} />
-      <meshBasicMaterial 
-        color="#00f3ff"
+/**
+ * Procedural Holographic Material
+ * Gives that transparent, glassy, glowing edge look
+ */
+const HoloMaterial = ({ hovered, color = THEME.primary }: { hovered: boolean, color?: string }) => (
+    <meshPhysicalMaterial
+        color={color}
+        emissive={color}
+        emissiveIntensity={hovered ? 0.8 : 0.15}
+        roughness={0.1}
+        metalness={0.9}
+        transmission={0.6} // Glass effect
+        thickness={2}
         transparent
-        opacity={0.6}
+        opacity={hovered ? 0.6 : THEME.glassOpacity}
         side={THREE.DoubleSide}
-      />
-    </mesh>
-  );
-}
+    />
+);
 
-function MapPedestal() {
-  const ringRef = useRef<THREE.Mesh>(null);
-  
-  useFrame((state) => {
-    if (ringRef.current) {
-      ringRef.current.rotation.z = state.clock.getElapsedTime() * 0.1;
-    }
-  });
+/**
+ * Renders the glowing neon edges of a building
+ */
+const NeonEdges = ({ geometry, color = THEME.primary }: { geometry: THREE.BufferGeometry, color?: string }) => {
+    return (
+        <lineSegments>
+            <edgesGeometry args={[geometry]} />
+            <lineBasicMaterial color={color} transparent opacity={THEME.edgeOpacity} linewidth={2} />
+        </lineSegments>
+    );
+};
 
-  return (
-    <group position={[0, -2, 0]}>
-      {/* Base platform */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[28, 30, 2, 64]} />
-        <meshStandardMaterial
-          color="#062830"
-          metalness={0.8}
-          roughness={0.2}
-          emissive="#003040"
-          emissiveIntensity={0.3}
-        />
-      </mesh>
-      
-      {/* Glowing ring */}
-      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 1.1, 0]}>
-        <ringGeometry args={[26, 27, 64]} />
-        <meshBasicMaterial color="#00f3ff" transparent opacity={0.8} side={THREE.DoubleSide} />
-      </mesh>
-      
-      {/* Inner ring */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 1.1, 0]}>
-        <ringGeometry args={[24, 25, 64]} />
-        <meshBasicMaterial color="#00ccff" transparent opacity={0.4} side={THREE.DoubleSide} />
-      </mesh>
-      
-      {/* Decorative outer segments */}
-      {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
-        <mesh 
-          key={i}
-          rotation={[-Math.PI / 2, 0, (i * Math.PI) / 4]}
-          position={[Math.cos((i * Math.PI) / 4) * 29, 0.5, Math.sin((i * Math.PI) / 4) * 29]}
-        >
-          <boxGeometry args={[2, 0.5, 1]} />
-          <meshBasicMaterial color="#00f3ff" transparent opacity={0.6} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
+const Building = ({ data, onHover, onClick }: { data: BuildingData, onHover: any, onClick: any }) => {
+    const mesh = useRef<THREE.Mesh>(null);
+    const [hovered, setHover] = useState(false);
 
-function MapGround() {
-  return (
-    <group>
-      {/* Main ground plane - teal colored like reference */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
-        <circleGeometry args={[25, 64]} />
-        <meshStandardMaterial
-          color="#0a3d47"
-          metalness={0.4}
-          roughness={0.6}
-          transparent
-          opacity={0.95}
-        />
-      </mesh>
-      
-      {/* Grid overlay */}
-      <gridHelper 
-        args={[50, 50, '#00f3ff', '#004455']} 
-        position={[0, 0.01, 0]}
-      />
-      
-      {/* Road labels around edges */}
-      <RoadLabel text="Racecourse Rd" position={[0, 0.1, 18]} rotation={0} />
-      <RoadLabel text="Mela Rd" position={[-18, 0.1, 8]} rotation={Math.PI / 2} />
-      <RoadLabel text="Sun City Rd" position={[0, 0.1, -18]} rotation={0} />
-    </group>
-  );
-}
+    // Create specific geometries based on "type" to mimic the satellite map shapes
+    const geometry = useMemo(() => {
+        if (data.type === 'complex') {
+            // Creates a hollow-ish building (Courtyard style)
+            const shape = new THREE.Shape();
+            const w = data.size[0] / 2;
+            const h = data.size[1] / 2;
 
-function RoadLabel({ text, position, rotation }: { text: string; position: [number, number, number]; rotation: number }) {
-  return (
-    <Text
-      position={position}
-      rotation={[-Math.PI / 2, 0, rotation]}
-      fontSize={1}
-      color="#00f3ff"
-      anchorX="center"
-      anchorY="middle"
-      font="/fonts/orbitron.woff"
-    >
-      {text}
-    </Text>
-  );
-}
+            // Outer rectangle
+            shape.moveTo(-w, -h);
+            shape.lineTo(w, -h);
+            shape.lineTo(w, h);
+            shape.lineTo(-w, h);
+            shape.lineTo(-w, -h);
 
-import { useState } from 'react';
+            // Inner hole (Courtyard)
+            const holePath = new THREE.Path();
+            const pad = 0.8;
+            holePath.moveTo(-w + pad, -h + pad);
+            holePath.lineTo(w - pad, -h + pad);
+            holePath.lineTo(w - pad, h - pad);
+            holePath.lineTo(-w + pad, h - pad);
+            holePath.lineTo(-w + pad, -h + pad);
+            shape.holes.push(holePath);
 
-export function HolographicMap({ onBuildingHover, onBuildingClick }: HolographicMapProps) {
-  return (
-    <group rotation={[0, Math.PI / 4, 0]}>
-      {/* Pedestal base */}
-      <MapPedestal />
-      
-      {/* Ground plane */}
-      <MapGround />
-      
-      {/* Roads */}
-      {ROADS.map((road, i) => (
-        <NeonRoad key={i} start={road.start} end={road.end} width={road.width} />
-      ))}
-      
-      {/* Buildings */}
-      {CAMPUS_BUILDINGS.map((building) => (
-        <MapBuilding
-          key={building.id}
-          building={building}
-          onHover={onBuildingHover}
-          onClick={onBuildingClick}
-        />
-      ))}
-      
-      {/* Ambient glow particles */}
-      <pointLight position={[0, 10, 0]} intensity={1} color="#00f3ff" distance={40} />
-    </group>
-  );
+            return new THREE.ExtrudeGeometry(shape, { depth: data.height, bevelEnabled: false });
+        } else if (data.id === 'main-gate' || data.id === 'diamond-gate') {
+            // Archway shape
+            return new THREE.TorusGeometry(data.size[0] / 3, 0.2, 8, 20, Math.PI);
+        }
+        // Default Box
+        return new THREE.BoxGeometry(data.size[0], data.height, data.size[1]);
+    }, [data]);
+
+    useFrame((state) => {
+        if (!mesh.current) return;
+        // Float animation
+        const t = state.clock.getElapsedTime();
+        mesh.current.position.y = (data.height / 2) + Math.sin(t * 2 + data.position[0]) * 0.1;
+
+        // Rotation for archways
+        if (data.id.includes('gate')) {
+            mesh.current.rotation.x = 0; // Reset default rotation for torus
+        }
+    });
+
+    const handlePointerOver = (e: any) => {
+        e.stopPropagation();
+        setHover(true);
+        onHover(data.id);
+        document.body.style.cursor = 'pointer';
+    };
+
+    const handlePointerOut = () => {
+        setHover(false);
+        onHover(null);
+        document.body.style.cursor = 'default';
+    };
+
+    return (
+        <group position={[data.position[0], 0, data.position[1]]}>
+            {/* The Building Mesh */}
+            <mesh
+                ref={mesh}
+                geometry={geometry}
+                onPointerOver={handlePointerOver}
+                onPointerOut={handlePointerOut}
+                onClick={() => onClick(data.id)}
+                rotation={[data.type === 'complex' ? -Math.PI / 2 : 0, 0, 0]} // Rotate extruded geo
+            >
+                <HoloMaterial hovered={hovered} color={data.color} />
+                <NeonEdges geometry={geometry} color={data.color || THEME.primary} />
+            </mesh>
+
+            {/* Base Glow Plate */}
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]}>
+                <planeGeometry args={[data.size[0] * 1.2, data.size[1] * 1.2]} />
+                <meshBasicMaterial
+                    color={data.color || THEME.primary}
+                    transparent
+                    opacity={hovered ? 0.3 : 0.05}
+                />
+            </mesh>
+
+            {/* Hover Label */}
+            {hovered && (
+                <Html position={[0, data.height + 2, 0]} center distanceFactor={15} zIndexRange={[100, 0]}>
+                    <div style={{
+                        background: 'rgba(2, 44, 51, 0.9)',
+                        border: '1px solid #00f3ff',
+                        padding: '8px 16px',
+                        borderRadius: '4px',
+                        color: '#fff',
+                        fontFamily: 'Orbitron, sans-serif',
+                        textAlign: 'center',
+                        backdropFilter: 'blur(4px)',
+                        boxShadow: '0 0 15px rgba(0, 243, 255, 0.3)'
+                    }}>
+                        <div style={{ fontSize: '1.2em', fontWeight: 'bold', color: '#00f3ff' }}>{data.name}</div>
+                        <div style={{ fontSize: '0.8em', color: '#aaa' }}>{data.hindiName}</div>
+                    </div>
+                </Html>
+            )}
+        </group>
+    );
+};
+
+const HoloRoads = () => {
+    // Convert points to Three vectors
+    const lines = useMemo(() => {
+        return ROADS.map(road => {
+            const points = road.points.map(p => new THREE.Vector3(p[0], 0.05, p[1]));
+            return new THREE.BufferGeometry().setFromPoints(points);
+        });
+    }, []);
+
+    return (
+        <group>
+            {lines.map((geo, i) => (
+                <lineSegments key={i} geometry={geo}>
+                    <lineBasicMaterial color={THEME.primary} transparent opacity={0.5} linewidth={1} />
+                </lineSegments>
+            ))}
+        </group>
+    );
+};
+
+const SciFiBase = () => {
+    // The "Projector" look at the bottom
+    return (
+        <group position={[0, -2, 0]}>
+            {/* Main Cylinder Base */}
+            <mesh position={[0, 1, 0]}>
+                <cylinderGeometry args={[28, 20, 2, 64]} />
+                <meshStandardMaterial color="#021014" metalness={0.8} roughness={0.2} />
+            </mesh>
+
+            {/* Glowing Ring */}
+            <mesh position={[0, 2.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <ringGeometry args={[26, 27, 64]} />
+                <meshBasicMaterial color={THEME.primary} transparent opacity={0.5} side={THREE.DoubleSide} />
+            </mesh>
+
+            {/* Inner Grid Floor */}
+            <gridHelper args={[60, 60, THEME.secondary, '#022026']} position={[0, 2.05, 0]} />
+
+            {/* Decorative Outer Rings */}
+            <mesh position={[0, 0.5, 0]}>
+                <torusGeometry args={[25, 0.5, 16, 100]} />
+                <meshStandardMaterial color="#004455" />
+            </mesh>
+        </group>
+    );
+};
+
+const HolographicTrees = () => {
+    // Use Instances for better performance with many trees
+    const count = 50;
+    const trees = useMemo(() => {
+        const temp = [];
+        for (let i = 0; i < count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const r = 10 + Math.random() * 15; // scattered around
+            temp.push({
+                position: [Math.cos(angle) * r, 0, Math.sin(angle) * r] as [number, number, number],
+                scale: 0.5 + Math.random() * 0.5
+            });
+        }
+        return temp;
+    }, []);
+
+    return (
+        <Instances range={count}>
+            <coneGeometry args={[0.5, 1.5, 4]} />
+            <meshBasicMaterial color="#00ffaa" transparent opacity={0.2} wireframe />
+            {trees.map((data, i) => (
+                <Instance key={i} position={data.position} scale={[data.scale, data.scale, data.scale]} />
+            ))}
+        </Instances>
+    );
+};
+
+// --- Main Export ---
+
+export function HolographicMap({ onBuildingHover, onBuildingClick }: { onBuildingHover: (id: string | null) => void, onBuildingClick: (id: string) => void }) {
+    // Rotation logic to match the "Diamond" orientation in the image
+    // The reference image is isometric (Diamond shape). 
+    // We rotate the whole content by 45 degrees (Math.PI / 4)
+
+    return (
+        <group>
+            {/* Adjust lighting for Hologram effect */}
+            <ambientLight intensity={0.2} />
+            <pointLight position={[10, 20, 10]} intensity={1} color={THEME.primary} distance={50} />
+            <pointLight position={[-10, 20, -10]} intensity={0.5} color="#00ffaa" distance={50} />
+
+            {/* Projector Base */}
+            <SciFiBase />
+
+            {/* The Map Content - Rotated to form Diamond shape */}
+            <group rotation={[0, Math.PI / 4, 0]} position={[0, 0.5, 0]}>
+
+                {/* Ground Plane (Invisible hit target or subtle glow) */}
+                <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+                    <circleGeometry args={[30, 64]} />
+                    <meshBasicMaterial color={THEME.ground} transparent opacity={0.9} />
+                </mesh>
+
+                <HoloRoads />
+                <HolographicTrees />
+
+                {BUILDINGS.map((building) => (
+                    <Building
+                        key={building.id}
+                        data={building}
+                        onHover={onBuildingHover}
+                        onClick={onBuildingClick}
+                    />
+                ))}
+
+                {/* Street Names floating */}
+                <Text
+                    position={[-22, 1, 0]}
+                    rotation={[-Math.PI / 2, 0, Math.PI / 2]}
+                    fontSize={1.5}
+                    color={THEME.primary}
+                >
+                    MELA ROAD
+                </Text>
+                
+
+            </group>
+        </group>
+    );
 }

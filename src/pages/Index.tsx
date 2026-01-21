@@ -7,90 +7,107 @@ import { BuildingInfo } from '@/components/ui/BuildingInfo';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
 
 const Index = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [hoveredBuilding, setHoveredBuilding] = useState<string | null>(null);
-  const [selectedSection, setSelectedSection] = useState<string | null>(null);
-  
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 3000);
-    
-    return () => clearTimeout(timer);
-  }, []);
+    const [isLoading, setIsLoading] = useState(true);
+    const [hoveredBuilding, setHoveredBuilding] = useState<string | null>(null);
+    const [selectedSection, setSelectedSection] = useState<string | null>(null);
+    const [webglSupported, setWebglSupported] = useState(true);
 
-  const handleBuildingHover = useCallback((building: string | null) => {
-    setHoveredBuilding(building);
-  }, []);
+    useEffect(() => {
+        // Lightweight WebGL capability probe so we can fall back gracefully.
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        if (!gl) {
+            setWebglSupported(false);
+            setIsLoading(false);
+            return;
+        }
 
-  const handleBuildingClick = useCallback((building: string) => {
-    console.log('Building clicked:', building);
-    // Future: Navigate to section or show modal
-  }, []);
+        const timer = setTimeout(() => {
+            setIsLoading(false);
+            // Set initial building immediately after loading completes
+            setTimeout(() => {
+                setHoveredBuilding('main-gate');
+            }, 100);
+        }, 4000);
 
-  const handleAction = useCallback((action: string) => {
-    console.log('Action:', action);
-    setSelectedSection(action);
-  }, []);
+        return () => clearTimeout(timer);
+    }, []);
 
-  return (
-    <div className="relative w-full h-screen overflow-hidden bg-background">
-      {/* Loading Screen */}
-      {isLoading && <LoadingScreen />}
-      
-      {/* Navigation */}
-      <MainNavigation />
-      
-      {/* Controls Guide - simplified for map view */}
-      <div className="fixed bottom-6 left-6 z-30">
-        <div className="bg-card/80 backdrop-blur-md border border-primary/30 rounded-lg px-4 py-2">
-          <p className="text-xs text-muted-foreground font-mono">
-            <span className="text-primary">Drag</span> to rotate • <span className="text-primary">Scroll</span> to zoom • <span className="text-primary">Click</span> building for info
-          </p>
+    // After loading finishes, ensure at least one building name/info is visible.
+    useEffect(() => {
+        if (!isLoading && !hoveredBuilding) {
+            setHoveredBuilding('main-gate');
+        }
+    }, [isLoading, hoveredBuilding]);
+
+    const handleBuildingHover = useCallback((building: string | null) => {
+        // Keep showing the last hovered building instead of hiding the panel
+        if (building) {
+            setHoveredBuilding(building);
+        }
+    }, []);
+
+    const handleBuildingClick = useCallback((building: string) => {
+        console.log('Building clicked:', building);
+        // Future: Navigate to section or show modal
+    }, []);
+
+    return (
+        <div className="relative w-full h-screen overflow-hidden bg-background">
+            {/* Loading Screen */}
+            {isLoading && <LoadingScreen />}
+
+            {/* Navigation */}
+            <MainNavigation />
+
+            {/* Controls Guide */}
+            <ControlsGuide />
+
+            {/* Building Info Panel - Only show after loading */}
+            {!isLoading && <BuildingInfo buildingId={hoveredBuilding} />}
+
+            {/* 3D Canvas */}
+            <div className="absolute inset-0">
+                {webglSupported ? (
+                    <CampusScene
+                        onBuildingHover={handleBuildingHover}
+                        onBuildingClick={handleBuildingClick}
+                        isLoading={isLoading}
+                    />
+                ) : (
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-4 bg-gradient-to-b from-[#0a1a2a] to-[#050c15] text-center">
+                        <p className="font-orbitron text-lg text-primary">WebGL is not available on this device.</p>
+                        <p className="text-sm text-muted-foreground">Showing a static placeholder instead.</p>
+                        <img src="/placeholder.svg" alt="Campus map placeholder" className="max-w-md opacity-80" />
+                    </div>
+                )}
+            </div>
+
+            {/* Scanline overlay */}
+            <div className="absolute inset-0 pointer-events-none scanlines opacity-30" />
+
+            {/* Vignette overlay */}
+            <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                    background: 'radial-gradient(ellipse at center, transparent 40%, hsl(240 80% 5% / 0.8) 100%)',
+                }}
+            />
+
+            {/* Bottom Actions */}
+            <BottomActions />
+
+            {/* Corner decorations */}
+            <div className="fixed top-20 left-6 w-20 h-0.5 bg-gradient-to-r from-primary to-transparent" />
+            <div className="fixed top-20 left-6 w-0.5 h-20 bg-gradient-to-b from-primary to-transparent" />
+            <div className="fixed top-20 right-6 w-20 h-0.5 bg-gradient-to-l from-secondary to-transparent" />
+            <div className="fixed top-20 right-6 w-0.5 h-20 bg-gradient-to-b from-secondary to-transparent" />
+            <div className="fixed bottom-20 left-6 w-20 h-0.5 bg-gradient-to-r from-secondary to-transparent" />
+            <div className="fixed bottom-20 left-6 w-0.5 h-20 bg-gradient-to-t from-secondary to-transparent" />
+            <div className="fixed bottom-20 right-6 w-20 h-0.5 bg-gradient-to-l from-primary to-transparent" />
+            <div className="fixed bottom-20 right-6 w-0.5 h-20 bg-gradient-to-t from-primary to-transparent" />
         </div>
-      </div>
-      
-      {/* Building Info Panel */}
-      <BuildingInfo buildingId={hoveredBuilding} />
-      
-      {/* 3D Canvas */}
-      <div className="absolute inset-0">
-        <CampusScene 
-          onBuildingHover={handleBuildingHover}
-          onBuildingClick={handleBuildingClick}
-        />
-      </div>
-      
-      {/* Scanline overlay */}
-      <div className="absolute inset-0 pointer-events-none scanlines opacity-30" />
-      
-      {/* Vignette overlay */}
-      <div 
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'radial-gradient(ellipse at center, transparent 40%, hsl(240 80% 5% / 0.8) 100%)',
-        }}
-      />
-      
-      {/* Bottom Actions */}
-      <BottomActions
-        onHeadliners={() => handleAction('headliners')}
-        onTheme={() => handleAction('theme')}
-        onAboutUs={() => handleAction('about')}
-        onHistory={() => handleAction('history')}
-      />
-      
-      {/* Corner decorations */}
-      <div className="fixed top-20 left-6 w-20 h-0.5 bg-gradient-to-r from-primary to-transparent" />
-      <div className="fixed top-20 left-6 w-0.5 h-20 bg-gradient-to-b from-primary to-transparent" />
-      <div className="fixed top-20 right-6 w-20 h-0.5 bg-gradient-to-l from-secondary to-transparent" />
-      <div className="fixed top-20 right-6 w-0.5 h-20 bg-gradient-to-b from-secondary to-transparent" />
-      <div className="fixed bottom-20 left-6 w-20 h-0.5 bg-gradient-to-r from-secondary to-transparent" />
-      <div className="fixed bottom-20 left-6 w-0.5 h-20 bg-gradient-to-t from-secondary to-transparent" />
-      <div className="fixed bottom-20 right-6 w-20 h-0.5 bg-gradient-to-l from-primary to-transparent" />
-      <div className="fixed bottom-20 right-6 w-0.5 h-20 bg-gradient-to-t from-primary to-transparent" />
-    </div>
-  );
+    );
 };
 
 export default Index;

@@ -1,0 +1,30 @@
+{
+    "name": "aarunya-backend",
+    "version": "1.0.0",
+    "description": "Backend server for Aarunya Festival Registration System",
+    "main": "index.ts",
+    "type": "module",
+    "scripts": {
+        "dev": "tsx watch server/index.ts",
+        "build": "tsc",
+        "start": "node dist/index.js",
+        "lint": "eslint server/"
+    },
+    "dependencies": {
+        "bcryptjs": "^2.4.3",
+        "cors": "^2.8.5",
+        "dotenv": "^16.3.1",
+        "express": "^4.18.2",
+        "jsonwebtoken": "^9.1.2",
+        "nodemailer": "^6.9.7"
+    },
+    "devDependencies": {
+        "@types/bcryptjs": "^2.4.6",
+        "@types/express": "^4.17.21",
+        "@types/jsonwebtoken": "^9.0.6",
+        "@types/node": "^20.10.6",
+        "@types/nodemailer": "^6.4.14",
+        "typescript": "^5.3.3",
+        "tsx": "^4.7.0"
+    }
+}
