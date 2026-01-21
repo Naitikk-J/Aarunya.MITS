@@ -41,8 +41,14 @@ const Index = () => {
       {/* Navigation */}
       <MainNavigation />
       
-      {/* Controls Guide */}
-      <ControlsGuide />
+      {/* Controls Guide - simplified for map view */}
+      <div className="fixed bottom-6 left-6 z-30">
+        <div className="bg-card/80 backdrop-blur-md border border-primary/30 rounded-lg px-4 py-2">
+          <p className="text-xs text-muted-foreground font-mono">
+            <span className="text-primary">Drag</span> to rotate • <span className="text-primary">Scroll</span> to zoom • <span className="text-primary">Click</span> building for info
+          </p>
+        </div>
+      </div>
       
       {/* Building Info Panel */}
       <BuildingInfo buildingId={hoveredBuilding} />
