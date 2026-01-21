@@ -1,10 +1,7 @@
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, PerspectiveCamera, Environment, Stars } from '@react-three/drei';
-import { Suspense, useRef, useState, useCallback } from 'react';
-import * as THREE from 'three';
-import { HolographicGrid } from './HolographicGrid';
-import { CampusBuildings } from './CampusBuildings';
-import { PlayerCharacter } from './PlayerCharacter';
+import { OrbitControls, PerspectiveCamera, Stars } from '@react-three/drei';
+import { Suspense } from 'react';
+import { HolographicMap } from './HolographicMap';
 import { NeonParticles } from './NeonParticles';
 
 interface CampusSceneProps {
@@ -13,12 +10,6 @@ interface CampusSceneProps {
 }
 
 export function CampusScene({ onBuildingHover, onBuildingClick }: CampusSceneProps) {
-  const [playerPosition, setPlayerPosition] = useState<[number, number, number]>([0, 0, 0]);
-  
-  const handlePlayerMove = useCallback((newPosition: [number, number, number]) => {
-    setPlayerPosition(newPosition);
-  }, []);
-
   return (
     <Canvas
       className="w-full h-full"
@@ -26,45 +17,37 @@ export function CampusScene({ onBuildingHover, onBuildingClick }: CampusScenePro
       dpr={[1, 2]}
     >
       <Suspense fallback={null}>
-        {/* Camera */}
-        <PerspectiveCamera makeDefault position={[0, 30, 40]} fov={60} />
+        {/* Camera - isometric-style view from above */}
+        <PerspectiveCamera makeDefault position={[35, 45, 35]} fov={50} />
         <OrbitControls 
           enablePan={true}
           enableZoom={true}
           enableRotate={true}
-          minDistance={15}
-          maxDistance={80}
-          maxPolarAngle={Math.PI / 2.2}
-          target={playerPosition}
+          minDistance={30}
+          maxDistance={100}
+          minPolarAngle={Math.PI / 6}
+          maxPolarAngle={Math.PI / 3}
+          target={[0, 0, 0]}
+          autoRotate
+          autoRotateSpeed={0.3}
         />
         
         {/* Lighting */}
-        <ambientLight intensity={0.2} color="#3300ff" />
-        <directionalLight position={[10, 20, 5]} intensity={0.5} color="#00ccff" />
-        <pointLight position={[0, 15, 0]} intensity={2} color="#ff00ff" distance={50} />
-        <pointLight position={[20, 10, 10]} intensity={1.5} color="#00ffff" distance={40} />
-        <pointLight position={[-20, 10, -10]} intensity={1.5} color="#9d00ff" distance={40} />
+        <ambientLight intensity={0.4} color="#0099aa" />
+        <directionalLight position={[20, 30, 10]} intensity={0.8} color="#00ccff" />
+        <pointLight position={[0, 20, 0]} intensity={1.5} color="#00f3ff" distance={60} />
+        <pointLight position={[-20, 15, 20]} intensity={1} color="#00ffcc" distance={50} />
         
         {/* Stars background */}
-        <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+        <Stars radius={150} depth={80} count={3000} factor={4} saturation={0.5} fade speed={0.5} />
         
-        {/* Fog for depth */}
-        <fog attach="fog" args={['#0a0a1f', 30, 100]} />
+        {/* Gradient background fog */}
+        <fog attach="fog" args={['#051520', 50, 150]} />
         
-        {/* Holographic Grid */}
-        <HolographicGrid />
-        
-        {/* Campus Buildings */}
-        <CampusBuildings 
-          onHover={onBuildingHover} 
-          onClick={onBuildingClick}
-          playerPosition={playerPosition}
-        />
-        
-        {/* Player Character */}
-        <PlayerCharacter 
-          position={playerPosition}
-          onMove={handlePlayerMove}
+        {/* Holographic Map */}
+        <HolographicMap 
+          onBuildingHover={onBuildingHover} 
+          onBuildingClick={onBuildingClick}
         />
         
         {/* Floating Particles */}
