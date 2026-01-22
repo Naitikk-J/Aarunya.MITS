@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useState } from 'react';
+import React, { useRef, useMemo, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html, Text, Float, Instance, Instances } from '@react-three/drei';
 import * as THREE from 'three';
@@ -17,14 +17,18 @@ interface BuildingData {
     color?: string;
 }
 
-// --- Configuration ---
+// --- Configuration --- Kidcore Theme
 const THEME = {
-    primary: '#00f3ff',     // Bright Cyan
-    secondary: '#006d77',   // Deep Teal
-    ground: '#04181b',      // Very Dark Teal/Black
-    glow: '#00ffff',
-    glassOpacity: 0.15,
-    edgeOpacity: 0.8
+    primary: '#00A6FF',     // Electric Blue
+    secondary: '#FF5E1F',   // Safety Orange
+    accent: '#FF85C0',      // Bubblegum Pink
+    lime: '#B0FF57',        // Lime Green
+    yellow: '#FFDD33',      // Sunflower Yellow
+    ground: '#FFF9E6',      // Cream Background
+    black: '#1A1A1A',       // Gritty Black
+    glow: '#FF5E1F',        // Orange Glow
+    glassOpacity: 0.2,
+    edgeOpacity: 0.9
 };
 
 // --- Data: Mapped to the Diamond Layout ---
@@ -34,20 +38,20 @@ const BUILDINGS: BuildingData[] = [
     { id: 'main-gate', name: 'MITS Main Gate', hindiName: 'मुख्य द्वार', position: [5, -25], size: [4, 2], height: 2, type: 'landmark', icon: '🎓' },
 
     // Left Wing (Civil/Canteen area)
-    { id: 'old building', name: 'Old Building', hindiName: 'सिविल विभाग', position: [-6,-10], size: [16, 7], height: 2.5, type: 'complex' },
+    { id: 'old building', name: 'Old Building', hindiName: 'सिविल विभाग', position: [-6, -10], size: [16, 7], height: 2.5, type: 'complex' },
     { id: 'canteen', name: 'Canteen', hindiName: 'कैंटीन', position: [-15, -12], size: [4, 4], height: 1.5, type: 'simple', icon: '🍽️' },
     { id: 'AI department', name: 'AI department', hindiName: 'कैंटीन', position: [-3, 4], size: [9, 5], height: 6, type: 'simple', icon: '🍽️' },
-    { id: 'library', name: 'Central Library', hindiName: 'पुस्तकालय', position: [-7,-16], size: [4, 3], height: 3, type: 'complex', icon: '📚' },
+    { id: 'library', name: 'Central Library', hindiName: 'पुस्तकालय', position: [-7, -16], size: [4, 3], height: 3, type: 'complex', icon: '📚' },
 
     // Center
-    { id: 'golden-garden', name: 'stage ground', hindiName: 'गोल्डन जुबिली गार्डन', position: [-5, -22], size: [15, 6], height: 0.2, type: 'landmark', color: '#00ffaa' },
-    { id: 'golden-garden', name: 'AI ground', hindiName: 'गोल्डन जुबिली गार्डन', position: [-3, -2], size: [9, 7], height: 0.2, type: 'landmark', color: '#00ffaa' },
-    { id: 'golden-garden', name: 'statue ground', hindiName: 'गोल्डन जुबिली गार्डन', position: [15, -18.5], size: [10, 10], height: 0.2, type: 'landmark', color: '#00ffaa' },
-    { id: 'golden-garden', name: 'football ground', hindiName: 'गोल्डन जुबिली गार्डन', position: [-5, 22], size: [30, 15], height: 0.2, type: 'landmark', color: '#00ffaa' },
+    { id: 'golden-garden', name: 'stage ground', hindiName: 'गोल्डन जुबिली गार्डन', position: [-5, -22], size: [15, 6], height: 0.2, type: 'landmark', color: '#FFDD33' },
+    { id: 'golden-garden', name: 'AI ground', hindiName: 'गोल्डन जुबिली गार्डन', position: [-3, -2], size: [9, 7], height: 0.2, type: 'landmark', color: '#B0FF57' },
+    { id: 'golden-garden', name: 'statue ground', hindiName: 'गोल्डन जुबिली गार्डन', position: [15, -18.5], size: [10, 10], height: 0.2, type: 'landmark', color: '#FF85C0' },
+    { id: 'golden-garden', name: 'football ground', hindiName: 'गोल्डन जुबिली गार्डन', position: [-5, 22], size: [30, 15], height: 0.2, type: 'landmark', color: '#00A6FF' },
 
     // Right Wing (Biotech/Medical)
-    { id: 'biotech', name: 'Biotech Dept', hindiName: 'जैव प्रौद्योगिकी', position: [15,-11], size: [5, 5], height: 2.5, type: 'simple' },
-    { id: 'dispensary', name: 'Dispensary', hindiName: 'औषधालय', position: [15, -4] , size: [4, 4], height: 1.5, type: 'simple', icon: 'H' },
+    { id: 'biotech', name: 'Biotech Dept', hindiName: 'जैव प्रौद्योगिकी', position: [15, -11], size: [5, 5], height: 2.5, type: 'simple' },
+    { id: 'dispensary', name: 'Dispensary', hindiName: 'औषधालय', position: [15, -4], size: [4, 4], height: 1.5, type: 'simple', icon: 'H' },
 
     // Bottom Section (Architecture/Main Block)
     { id: 'architecture', name: 'Architecture Dept', hindiName: 'वास्तुकला', position: [-10, -3], size: [4, 4], height: 2.8, type: 'complex' },
@@ -65,26 +69,31 @@ const ROADS = [
     { points: [[-16, -20], [16, -20], [16, 20], [-16, 20], [-16, -20]] }, // Outer Loop
     { points: [[-18, -18], [18, 18]] }, // Diagonal Cross (Sun City to Gate)
     { points: [[-5, -5], [5, -5], [5, 5], [-5, 5], [-5, -5]] }, // Inner Garden Loop
+
+    // Road from MITS Main Gate to campus center
+    { points: [[5, -25], [5, -20], [0, -10]] }, // Main gate entry road connecting to Old Building
 ];
 
 // --- Components ---
 
 /**
- * Procedural Holographic Material
- * Gives that transparent, glassy, glowing edge look
+ * Enhanced Realistic Holographic Material
+ * Better material properties for more realistic rendering
  */
 const HoloMaterial = ({ hovered, color = THEME.primary }: { hovered: boolean, color?: string }) => (
     <meshPhysicalMaterial
         color={color}
         emissive={color}
-        emissiveIntensity={hovered ? 0.8 : 0.15}
-        roughness={0.1}
-        metalness={0.9}
-        transmission={0.6} // Glass effect
-        thickness={2}
+        emissiveIntensity={hovered ? 0.6 : 0.1}
+        roughness={0.25}
+        metalness={0.6}
+        transmission={0.4}
+        thickness={1.5}
         transparent
-        opacity={hovered ? 0.6 : THEME.glassOpacity}
+        opacity={hovered ? 0.8 : 0.35}
         side={THREE.DoubleSide}
+        envMapIntensity={0.8}
+        ior={1.5}
     />
 );
 
@@ -100,42 +109,51 @@ const NeonEdges = ({ geometry, color = THEME.primary }: { geometry: THREE.Buffer
     );
 };
 
-const Building = ({ data, onHover, onClick }: { data: BuildingData, onHover: any, onClick: any }) => {
+const Building = ({ data, onHover, onClick, showLabels = false }: { data: BuildingData, onHover: any, onClick: any, showLabels?: boolean }) => {
     const mesh = useRef<THREE.Mesh>(null);
     const [hovered, setHover] = useState(false);
 
     // Create specific geometries based on "type" to mimic the satellite map shapes
     const geometry = useMemo(() => {
         if (data.type === 'complex') {
-            // Creates a hollow-ish building (Courtyard style)
+            // Creates a hollow-ish building (Courtyard style) with beveled corners
             const shape = new THREE.Shape();
             const w = data.size[0] / 2;
             const h = data.size[1] / 2;
+            const bevel = 0.3;
 
-            // Outer rectangle
-            shape.moveTo(-w, -h);
-            shape.lineTo(w, -h);
-            shape.lineTo(w, h);
-            shape.lineTo(-w, h);
-            shape.lineTo(-w, -h);
+            // Outer rectangle with beveled corners
+            shape.moveTo(-w + bevel, -h);
+            shape.lineTo(w - bevel, -h);
+            shape.quadraticCurveTo(w, -h, w, -h + bevel);
+            shape.lineTo(w, h - bevel);
+            shape.quadraticCurveTo(w, h, w - bevel, h);
+            shape.lineTo(-w + bevel, h);
+            shape.quadraticCurveTo(-w, h, -w, h - bevel);
+            shape.lineTo(-w, -h + bevel);
+            shape.quadraticCurveTo(-w, -h, -w + bevel, -h);
 
-            // Inner hole (Courtyard)
+            // Inner hole (Courtyard) with beveled corners
             const holePath = new THREE.Path();
-            const pad = 0.8;
-            holePath.moveTo(-w + pad, -h + pad);
-            holePath.lineTo(w - pad, -h + pad);
-            holePath.lineTo(w - pad, h - pad);
-            holePath.lineTo(-w + pad, h - pad);
-            holePath.lineTo(-w + pad, -h + pad);
+            const pad = 1.2;
+            holePath.moveTo(-w + pad + 0.2, -h + pad);
+            holePath.lineTo(w - pad - 0.2, -h + pad);
+            holePath.quadraticCurveTo(w - pad, -h + pad, w - pad, -h + pad + 0.2);
+            holePath.lineTo(w - pad, h - pad - 0.2);
+            holePath.quadraticCurveTo(w - pad, h - pad, w - pad - 0.2, h - pad);
+            holePath.lineTo(-w + pad + 0.2, h - pad);
+            holePath.quadraticCurveTo(-w + pad, h - pad, -w + pad, h - pad - 0.2);
+            holePath.lineTo(-w + pad, -h + pad + 0.2);
+            holePath.quadraticCurveTo(-w + pad, -h + pad, -w + pad + 0.2, -h + pad);
             shape.holes.push(holePath);
 
-            return new THREE.ExtrudeGeometry(shape, { depth: data.height, bevelEnabled: false });
+            return new THREE.ExtrudeGeometry(shape, { depth: data.height, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.1, bevelSegments: 3 });
         } else if (data.id === 'main-gate' || data.id === 'diamond-gate') {
-            // Archway shape
-            return new THREE.TorusGeometry(data.size[0] / 3, 0.2, 8, 20, Math.PI);
+            // Archway shape with more detail
+            return new THREE.TorusGeometry(data.size[0] / 3, 0.35, 16, 32, Math.PI);
         }
-        // Default Box
-        return new THREE.BoxGeometry(data.size[0], data.height, data.size[1]);
+        // Default Box with better proportions
+        return new THREE.BoxGeometry(data.size[0], data.height, data.size[1], 4, 8, 4);
     }, [data]);
 
     useFrame((state) => {
@@ -188,22 +206,62 @@ const Building = ({ data, onHover, onClick }: { data: BuildingData, onHover: any
                 />
             </mesh>
 
-            {/* Hover Label */}
-            {hovered && (
-                <Html position={[0, data.height + 2, 0]} center distanceFactor={15} zIndexRange={[100, 0]}>
+            {/* Building Name - Visible After Loading */}
+            {showLabels && (
+                <Html
+                    position={[0, data.height + 1.5, 0]}
+                    center
+                    distanceFactor={20}
+                    zIndexRange={[1000, 0]}
+                    occlude="blended"
+                >
                     <div style={{
-                        background: 'rgba(2, 44, 51, 0.9)',
-                        border: '1px solid #00f3ff',
-                        padding: '8px 16px',
-                        borderRadius: '4px',
-                        color: '#fff',
+                        background: 'rgba(0, 166, 255, 0.85)',
+                        border: '2px solid #1A1A1A',
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        color: '#1A1A1A',
                         fontFamily: 'Orbitron, sans-serif',
                         textAlign: 'center',
-                        backdropFilter: 'blur(4px)',
-                        boxShadow: '0 0 15px rgba(0, 243, 255, 0.3)'
+                        backdropFilter: 'blur(8px)',
+                        boxShadow: `0 0 20px rgba(255, 94, 31, 0.6), inset 0 0 10px rgba(255, 255, 255, 0.2)`,
+                        fontSize: '0.85em',
+                        fontWeight: 'bold',
+                        whiteSpace: 'nowrap',
+                        pointerEvents: 'none',
+                        transform: 'translateZ(100px)',
+                        textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)'
                     }}>
-                        <div style={{ fontSize: '1.2em', fontWeight: 'bold', color: '#00f3ff' }}>{data.name}</div>
-                        <div style={{ fontSize: '0.8em', color: '#aaa' }}>{data.hindiName}</div>
+                        <div style={{ fontSize: '1em', color: '#1A1A1A', letterSpacing: '0.5px' }}>
+                            {data.name}
+                        </div>
+                        {data.hindiName && (
+                            <div style={{ fontSize: '0.75em', color: '#FF5E1F', marginTop: '2px', letterSpacing: '0.3px' }}>
+                                {data.hindiName}
+                            </div>
+                        )}
+                    </div>
+                </Html>
+            )}
+
+            {/* Enhanced Hover Label */}
+            {hovered && (
+                <Html position={[0, data.height + 3.5, 0]} center distanceFactor={20} zIndexRange={[1000, 0]} occlude="blended">
+                    <div style={{
+                        background: 'rgba(255, 85, 192, 0.95)',
+                        border: '3px solid #1A1A1A',
+                        padding: '10px 16px',
+                        borderRadius: '12px',
+                        color: '#1A1A1A',
+                        fontFamily: 'Orbitron, sans-serif',
+                        textAlign: 'center',
+                        backdropFilter: 'blur(12px)',
+                        boxShadow: '0 0 30px rgba(255, 85, 192, 0.8), 0 0 60px rgba(255, 94, 31, 0.4)',
+                        fontSize: '0.95em',
+                        fontWeight: 'bold'
+                    }}>
+                        <div style={{ fontSize: '1.1em', fontWeight: 'bold' }}>📍 {data.icon || '🏢'} {data.name}</div>
+                        <div style={{ fontSize: '0.75em', marginTop: '4px', opacity: 0.8 }}>{data.type?.toUpperCase()}</div>
                     </div>
                 </Html>
             )}
@@ -222,11 +280,34 @@ const HoloRoads = () => {
 
     return (
         <group>
+            {/* Main road lines - Electric Blue glowing roads */}
             {lines.map((geo, i) => (
-                <lineSegments key={i} geometry={geo}>
-                    <lineBasicMaterial color={THEME.primary} transparent opacity={0.5} linewidth={1} />
-                </lineSegments>
+                <group key={i}>
+                    {/* Primary glowing line */}
+                    <lineSegments geometry={geo}>
+                        <lineBasicMaterial color="#00A6FF" transparent opacity={0.8} linewidth={2} />
+                    </lineSegments>
+
+                    {/* Secondary glow effect - Orange */}
+                    <lineSegments geometry={geo}>
+                        <lineBasicMaterial color="#FF5E1F" transparent opacity={0.3} linewidth={4} />
+                    </lineSegments>
+                </group>
             ))}
+
+            {/* Animated road markers along paths */}
+            {ROADS.map((road, roadIdx) =>
+                road.points.slice(0, -1).map((point, pointIdx) => (
+                    <mesh
+                        key={`marker-${roadIdx}-${pointIdx}`}
+                        position={[point[0], 0.1, point[1]]}
+                        scale={[0.3, 0.1, 0.3]}
+                    >
+                        <boxGeometry args={[1, 1, 1]} />
+                        <meshBasicMaterial color="#B0FF57" transparent opacity={0.6} />
+                    </mesh>
+                ))
+            )}
         </group>
     );
 };
@@ -261,37 +342,113 @@ const SciFiBase = () => {
 
 const HolographicTrees = () => {
     // Use Instances for better performance with many trees
-    const count = 50;
+    const count = 80;
     const trees = useMemo(() => {
         const temp = [];
+        // Scatter trees around the campus in clusters
         for (let i = 0; i < count; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const r = 10 + Math.random() * 15; // scattered around
+            const r = 8 + Math.random() * 18; // scattered around perimeter and throughout
+            const scale = 0.6 + Math.random() * 0.8;
             temp.push({
                 position: [Math.cos(angle) * r, 0, Math.sin(angle) * r] as [number, number, number],
-                scale: 0.5 + Math.random() * 0.5
+                scale: scale,
+                colorVariant: Math.floor(Math.random() * 3) // For color variation
             });
         }
         return temp;
     }, []);
 
+    const treeColors = [
+        '#B0FF57',    // Lime Green - primary
+        '#00A6FF',    // Electric Blue - accent
+        '#FF85C0',    // Bubblegum Pink - accent
+    ];
+
     return (
-        <Instances range={count}>
-            <coneGeometry args={[0.5, 1.5, 4]} />
-            <meshBasicMaterial color="#00ffaa" transparent opacity={0.2} wireframe />
-            {trees.map((data, i) => (
-                <Instance key={i} position={data.position} scale={[data.scale, data.scale, data.scale]} />
-            ))}
-        </Instances>
+        <group>
+            {/* Large cone-shaped holographic trees */}
+            {trees.map((data, i) => {
+                const treeColor = treeColors[data.colorVariant];
+                return (
+                    <group key={i} position={data.position}>
+                        {/* Main tree cone */}
+                        <mesh scale={[data.scale, data.scale * 1.5, data.scale]} castShadow>
+                            <coneGeometry args={[0.8, 2, 8]} />
+                            <meshPhysicalMaterial
+                                color={treeColor}
+                                emissive={treeColor}
+                                emissiveIntensity={0.4}
+                                transparent
+                                opacity={0.7}
+                                metalness={0.3}
+                                roughness={0.6}
+                            />
+                        </mesh>
+
+                        {/* Glowing tree outline */}
+                        <mesh scale={[data.scale * 1.05, data.scale * 1.55, data.scale * 1.05]}>
+                            <coneGeometry args={[0.8, 2, 8]} />
+                            <meshBasicMaterial
+                                color={treeColor}
+                                transparent
+                                opacity={0.3}
+                                wireframe
+                            />
+                        </mesh>
+
+                        {/* Tree trunk - darker base */}
+                        <mesh position={[0, -0.5, 0]} scale={[data.scale * 0.3, data.scale * 0.8, data.scale * 0.3]}>
+                            <cylinderGeometry args={[0.4, 0.5, 1, 4]} />
+                            <meshStandardMaterial
+                                color="#1A1A1A"
+                                emissive="#FF5E1F"
+                                emissiveIntensity={0.2}
+                            />
+                        </mesh>
+                    </group>
+                );
+            })}
+
+            {/* Ambient tree particles for depth */}
+            <group>
+                {trees.slice(0, 20).map((data, i) => (
+                    <mesh
+                        key={`particle-${i}`}
+                        position={[data.position[0], 1 + Math.random() * 2, data.position[2]]}
+                        scale={[0.2, 0.2, 0.2]}
+                    >
+                        <sphereGeometry args={[1, 4, 4]} />
+                        <meshBasicMaterial
+                            color={treeColors[i % 3]}
+                            transparent
+                            opacity={0.4}
+                        />
+                    </mesh>
+                ))}
+            </group>
+        </group>
     );
 };
 
 // --- Main Export ---
 
-export function HolographicMap({ onBuildingHover, onBuildingClick }: { onBuildingHover: (id: string | null) => void, onBuildingClick: (id: string) => void }) {
+export function HolographicMap({ onBuildingHover, onBuildingClick, isLoading = false }: { onBuildingHover: (id: string | null) => void, onBuildingClick: (id: string) => void, isLoading?: boolean }) {
     // Rotation logic to match the "Diamond" orientation in the image
     // The reference image is isometric (Diamond shape). 
     // We rotate the whole content by 45 degrees (Math.PI / 4)
+
+    const [showLabels, setShowLabels] = useState(false);
+
+    useEffect(() => {
+        if (!isLoading) {
+            // Show labels 0.5s after loading completes
+            const timer = setTimeout(() => setShowLabels(true), 500);
+            return () => clearTimeout(timer);
+        } else {
+            setShowLabels(false);
+        }
+    }, [isLoading]);
 
     return (
         <group>
@@ -321,6 +478,7 @@ export function HolographicMap({ onBuildingHover, onBuildingClick }: { onBuildin
                         data={building}
                         onHover={onBuildingHover}
                         onClick={onBuildingClick}
+                        showLabels={showLabels}
                     />
                 ))}
 
@@ -333,7 +491,7 @@ export function HolographicMap({ onBuildingHover, onBuildingClick }: { onBuildin
                 >
                     MELA ROAD
                 </Text>
-                
+
 
             </group>
         </group>

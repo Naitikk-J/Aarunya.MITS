@@ -14,8 +14,16 @@ export function CampusScene({ onBuildingHover, onBuildingClick, isLoading = fals
     return (
         <Canvas
             className="w-full h-full"
-            gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
+            gl={{
+                antialias: true,
+                alpha: true,
+                powerPreference: 'high-performance',
+                shadows: true,
+                stencil: false,
+                depth: true
+            }}
             dpr={[1, 2]}
+            shadows
         >
             <Suspense fallback={null}>
                 {/* Camera - isometric-style view from above */}
@@ -33,18 +41,29 @@ export function CampusScene({ onBuildingHover, onBuildingClick, isLoading = fals
                     autoRotateSpeed={0.3}
                 />
 
-                {/* Lighting */}
-                <ambientLight intensity={0.4} color="#0099aa" />
-                <directionalLight position={[20, 30, 10]} intensity={0.8} color="#00ccff" />
-                <pointLight position={[0, 20, 0]} intensity={1.5} color="#00f3ff" distance={60} />
-                <pointLight position={[-20, 15, 20]} intensity={1} color="#00ffcc" distance={50} />
+                {/* Lighting - Kidcore Theme with Shadows */}
+                <ambientLight intensity={0.6} color="#00A6FF" />
+                <directionalLight
+                    position={[40, 50, 30]}
+                    intensity={1.0}
+                    color="#FF5E1F"
+                    castShadow
+                    shadow-mapSize-width={2048}
+                    shadow-mapSize-height={2048}
+                    shadow-camera-far={200}
+                    shadow-camera-left={-100}
+                    shadow-camera-right={100}
+                    shadow-camera-top={100}
+                    shadow-camera-bottom={-100}
+                />
+                <pointLight position={[0, 30, 0]} intensity={1.2} color="#FF85C0" distance={80} castShadow />
+                <pointLight position={[-30, 20, 30]} intensity={0.8} color="#B0FF57" distance={60} />
 
                 {/* Stars background */}
                 <Stars radius={150} depth={80} count={3000} factor={4} saturation={0.5} fade speed={0.5} />
 
-                {/* Gradient background fog */}
-                <fog attach="fog" args={['#051520', 50, 150]} />
-
+                {/* Dark background fog */}
+                <fog attach="fog" args={['#0A0E27', 50, 150]} />
                 {/* Holographic Map */}
                 <HolographicMap
                     onBuildingHover={onBuildingHover}

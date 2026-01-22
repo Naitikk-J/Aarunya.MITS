@@ -12,6 +12,7 @@ interface Building {
     color: string;
     glowColor: string;
     section?: string;
+    rotation?: [number, number, number];
 }
 
 const CAMPUS_BUILDINGS: Building[] = [
@@ -63,7 +64,8 @@ const CAMPUS_BUILDINGS: Building[] = [
         scale: [5, 5, 2],
         color: '#ff006e',
         glowColor: '#ff00ff',
-        section: 'competitions'
+        section: 'competitions',
+        rotation: [Math.PI / 2, Math.PI / 2, Math.PI / 2]
     },
     {
         id: 'civil-dept',
@@ -71,7 +73,7 @@ const CAMPUS_BUILDINGS: Building[] = [
         hindiName: 'सिविल इंजीनियरिंग विभाग',
         position: [8, 3.5, 0],
         scale: [6, 7, 5],
-        color: '#00ccff',
+        color: '#010e11ff',
         glowColor: '#00f3ff',
         section: 'events'
     },
@@ -166,7 +168,7 @@ function HolographicBuilding({
     });
 
     return (
-        <group position={building.position}>
+        <group position={building.position} rotation={building.rotation ? new THREE.Euler(...building.rotation) : undefined}>
             {/* Main building mesh */}
             <mesh
                 ref={meshRef}

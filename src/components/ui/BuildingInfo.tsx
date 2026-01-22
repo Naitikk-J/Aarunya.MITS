@@ -1,109 +1,64 @@
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { MapPin } from 'lucide-react';
+
 interface BuildingInfoProps {
-  buildingId: string | null;
+    buildingId: string | null;
 }
 
-const BUILDING_INFO: Record<string, { name: string; hindiName: string; description: string; color: string }> = {
-  'main-gate': {
-    name: 'MITS Main Gate',
-    hindiName: 'एमआईटीएस मेन गेट',
-    description: 'The iconic entrance to MITS campus. View festival schedule here.',
-    color: '#00f3ff',
-  },
-  'library': {
-    name: 'MITS Library',
-    hindiName: 'एमआईटीएस लाइबरी',
-    description: 'Knowledge hub hosting literary events and workshops.',
-    color: '#9d00ff',
-  },
-  'canteen': {
-    name: 'MITS Canteen',
-    hindiName: 'एमआईटीएस कैंटीन',
-    description: 'Food festival zone with exclusive merch booth.',
-    color: '#00ffc3',
-  },
-  'golden-garden': {
-    name: 'Golden Jubilee Garden',
-    hindiName: 'गोल्डन जुबिली गार्डन',
-    description: 'Outdoor events and sponsor showcase area.',
-    color: '#ffcc00',
-  },
-  'diamond-gate': {
-    name: 'Diamond Jubilee Gate',
-    hindiName: 'डायमंड जुबिली गेट',
-    description: 'Competition registration and tournament arena.',
-    color: '#ff006e',
-  },
-  'civil-dept': {
-    name: 'Dept. of Civil Engineering',
-    hindiName: 'सिविल इंजीनियरिंग विभाग',
-    description: 'Technical competitions and exhibitions.',
-    color: '#00ccff',
-  },
-  'biotech': {
-    name: 'Dept. of Biotechnology',
-    hindiName: 'जैव प्रौद्योगिकी विभाग',
-    description: 'Science workshops and biotech events.',
-    color: '#00ff88',
-  },
-  'architecture': {
-    name: 'Dept. of Architecture',
-    hindiName: 'वास्तुकला विभाग',
-    description: 'Art exhibitions and design competitions.',
-    color: '#ff9900',
-  },
-  'shivji-mandir': {
-    name: 'Shivji Mandir',
-    hindiName: 'शिवजी मंदिर',
-    description: 'Cultural performances and traditional events.',
-    color: '#ff6600',
-  },
-  'medical': {
-    name: 'MITS Medical Dispensary',
-    hindiName: 'एमआईटीएस मेडिकल डिस्पेंसरी',
-    description: 'First aid station and contact center.',
-    color: '#ff0066',
-  },
+const buildingData: Record<string, { name: string; description: string }> = {
+    'main-gate': {
+        name: 'Main Gate',
+        description: 'The grand entrance to the AARUNYA festival grounds. Welcome to the experience!',
+    },
+    'stage-1': {
+        name: 'Main Stage',
+        description: 'The primary performance venue featuring headlining acts and major events.',
+    },
+    'stage-2': {
+        name: 'Secondary Stage',
+        description: 'Alternative performances and emerging artists showcase their talents here.',
+    },
+    'food-court': {
+        name: 'Food Court',
+        description: 'A variety of culinary delights from local and international cuisines.',
+    },
+    'merch-zone': {
+        name: 'Merch Zone',
+        description: 'Official AARUNYA merchandise and exclusive festival collectibles.',
+    },
+    'workshop-area': {
+        name: 'Workshop Area',
+        description: 'Interactive sessions, hands-on activities, and creative workshops.',
+    },
+    'competition-arena': {
+        name: 'Competition Arena',
+        description: 'Battle it out in various competitions and showcase your skills.',
+    },
 };
 
-export function BuildingInfo({ buildingId }: BuildingInfoProps) {
-  if (!buildingId || !BUILDING_INFO[buildingId]) return null;
-  
-  const building = BUILDING_INFO[buildingId];
-  
-  return (
-    <div 
-      className="fixed top-24 right-6 z-40 w-72 p-4 rounded-lg border bg-background/90 backdrop-blur-md animate-scale-in"
-      style={{
-        borderColor: building.color,
-        boxShadow: `0 0 20px ${building.color}40, 0 0 40px ${building.color}20`,
-      }}
-    >
-      <div className="space-y-2">
-        <h3 
-          className="font-orbitron text-lg font-bold"
-          style={{ color: building.color }}
-        >
-          {building.name}
-        </h3>
-        <p className="font-rajdhani text-sm text-muted-foreground">
-          {building.hindiName}
-        </p>
-        <p className="text-sm text-foreground/80">
-          {building.description}
-        </p>
-        <div 
-          className="flex items-center gap-2 pt-2 border-t"
-          style={{ borderColor: `${building.color}40` }}
-        >
-          <kbd 
-            className="px-2 py-1 rounded text-xs font-mono border"
-            style={{ borderColor: building.color, color: building.color }}
-          >
-            E
-          </kbd>
-          <span className="text-xs text-muted-foreground">Click or press to enter</span>
+export const BuildingInfo = ({ buildingId }: BuildingInfoProps) => {
+    if (!buildingId) return null;
+
+    const building = buildingData[buildingId] || {
+        name: buildingId.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+        description: 'Explore this area to discover more about the festival.',
+    };
+
+    return (
+        <div className="fixed bottom-24 left-6 z-40 max-w-xs">
+            <Card className="border-secondary/30 bg-background/80 backdrop-blur-md">
+                <CardHeader className="pb-2">
+                    <CardTitle className="font-orbitron text-sm text-primary flex items-center gap-2">
+                        <MapPin size={14} />
+                        {building.name}
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-xs text-muted-foreground font-rajdhani">
+                        {building.description}
+                    </p>
+                </CardContent>
+            </Card>
         </div>
-      </div>
-    </div>
-  );
-}
+    );
+};
